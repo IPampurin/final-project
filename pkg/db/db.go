@@ -22,13 +22,18 @@ CREATE INDEX scheduler_date ON scheduler (date);`
 
 func Init(dbFile string) error {
 
+	envDbFile, ok := os.LookupEnv("TODO_DBFILE")
+	if !ok && len(envDbFile) > 0 {
+		dbFile = envDbFile
+	}
+
 	_, err := os.Stat(dbFile)
 	var install bool
 	if err != nil {
 		install = true
 	}
 
-	db, err := sql.Open("sqlite", "scheduler.db")
+	db, err := sql.Open("sqlite", dbFile)
 	if err != nil {
 		fmt.Printf("ошибка открытия %s: ", dbFile)
 		return err
