@@ -38,11 +38,12 @@ func nextDayHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", http.DetectContentType([]byte(dateOut)))
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(dateOut))
+
 }
 
 func NextDate(now time.Time, start string, repeat string) (string, error) {
 
-	startTime, err := time.Parse(DateOnlyApi, start)
+	date, err := time.Parse(DateOnlyApi, start)
 	if err != nil {
 		return "", fmt.Errorf("ошибка парсинга даты параметра 'date': %e", err)
 	}
@@ -53,22 +54,21 @@ func NextDate(now time.Time, start string, repeat string) (string, error) {
 
 	repeatParametrs := strings.Split(repeat, " ")
 
-	var dateResult time.Time
-
 	switch repeatParametrs[0] {
 	case "y":
 		if len(repeatParametrs) != 1 {
 			return "", fmt.Errorf("первая позиция в параметре repeat указана не верно ('y' не требует дополнительных уточнений).")
 		}
+		/* правильно, вообще-то, так
+			for now.After(date) {
+				date = date.AddDate(1, 0, 0)
+			}
+		а не так */
 
-		if startTime.After(now) {
-			dateResult = startTime
-		} else {
-			for {
-				dateResult = startTime.AddDate(1, 0, 0)
-				if dateResult.After(now) {
-					break
-				}
+		for {
+			date = date.AddDate(1, 0, 0)
+			if date.After(now) {
+				break
 			}
 		}
 
@@ -86,21 +86,22 @@ func NextDate(now time.Time, start string, repeat string) (string, error) {
 			return "", fmt.Errorf("количество дней в параметре repeat не более 400.")
 		}
 
-		if startTime.After(now) {
-			dateResult = startTime
-		} else {
-			for {
-				dateResult = startTime.AddDate(0, 0, daysCount)
-				if dateResult.After(now) {
-					break
-				}
+		/* правильно, вообще-то, так
+			for now.After(date) {
+				date = date.AddDate(0, 0, daysCount)
+			}
+		а не так */
+
+		for {
+			date = date.AddDate(0, 0, daysCount)
+			if date.After(now) {
+				break
 			}
 		}
 
 	default:
 		return "", fmt.Errorf("первая позиция в параметре repeat указана не верно.")
-
 	}
 
-	return dateResult.Format(DateOnlyApi), nil
+	return date.Format(DateOnlyApi), nil
 }
