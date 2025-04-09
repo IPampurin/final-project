@@ -42,4 +42,15 @@ jobs:
         sleep 100
         go test -run ^TestNextDate$ ./tests 
         
+    - name: Run DB
+      run: |
+        CGO_ENABLED=0 GOOS=linux go run main.go &
+        sleep 100
+        go test -run ^TestDB$ ./tests 
+        
+    - name: Run NextDate
+      run: |
+        CGO_ENABLED=0 GOOS=linux go run main.go &
+        sleep 100
+        go test -run ^TestNextDate$ ./tests 
         
