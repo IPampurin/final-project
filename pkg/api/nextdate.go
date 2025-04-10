@@ -50,7 +50,7 @@ func NextDate(now time.Time, start string, repeat string) (string, error) {
 	}
 
 	if repeat == "" {
-		return "", fmt.Errorf("параметр repeat не указан.")
+		return "", fmt.Errorf("параметр repeat не указан\n")
 	}
 
 	repeatParametrs := strings.Split(repeat, " ")
@@ -58,7 +58,7 @@ func NextDate(now time.Time, start string, repeat string) (string, error) {
 	switch repeatParametrs[0] {
 	case "y":
 		if len(repeatParametrs) != 1 {
-			return "", fmt.Errorf("первая позиция в параметре repeat указана не верно ('y' не требует дополнительных уточнений).")
+			return "", fmt.Errorf("первая позиция в параметре repeat указана не верно ('y' не требует дополнительных уточнений)\n")
 		}
 		/* правильнее было бы так
 			for now.After(date) {
@@ -75,16 +75,16 @@ func NextDate(now time.Time, start string, repeat string) (string, error) {
 
 	case "d":
 		if len(repeatParametrs) != 2 {
-			return "", fmt.Errorf("параметр repeat указан не верно (правильно, например, 'd 7').")
+			return "", fmt.Errorf("параметр repeat указан не верно (правильно, например, 'd 7')\n")
 		}
 
 		daysCount, err := strconv.Atoi(repeatParametrs[1])
 		if err != nil {
-			return "", fmt.Errorf("количество дней в параметре repeat указано не верно (правильно, например, 'd 7').")
+			return "", fmt.Errorf("количество дней в параметре repeat указано не верно (правильно, например, 'd 7')\n")
 		}
 
 		if daysCount < 1 || 400 < daysCount {
-			return "", fmt.Errorf("количество дней в параметре repeat не более 400.")
+			return "", fmt.Errorf("количество дней в параметре repeat - не более 400\n")
 		}
 
 		/* правильнее было бы так
@@ -102,7 +102,7 @@ func NextDate(now time.Time, start string, repeat string) (string, error) {
 
 	case "w":
 		if len(repeatParametrs) != 2 {
-			return "", fmt.Errorf("параметр repeat указан не верно (правильно, например, 'w 1,4,5').\n")
+			return "", fmt.Errorf("параметр repeat указан не верно (правильно, например, 'w 1,4,5')\n")
 		}
 
 		repeatWeekDaysStr := strings.Split(repeatParametrs[1], ",")
@@ -111,14 +111,17 @@ func NextDate(now time.Time, start string, repeat string) (string, error) {
 		for i := 0; i < len(repeatWeekDaysStr); i++ {
 			repeatWeekDaysInt[i], err = strconv.Atoi(repeatWeekDaysStr[i])
 			if err != nil || repeatWeekDaysInt[i] < 1 || repeatWeekDaysInt[i] > 7 {
-				return "", fmt.Errorf("дни недели в параметре repeat указаны не верно (правильно, например, 'w 1,4,7').")
+				return "", fmt.Errorf("дни недели в параметре repeat указаны не верно (правильно, например, 'w 1,4,7')\n")
 			}
 		}
 
 		slices.Sort(repeatWeekDaysInt)
 
+		if now.After(date) {
+			date = now
+		}
 		var dateWeekDay int
-		date = now
+
 	outerLoop:
 		for {
 			date = date.AddDate(0, 0, 1)
@@ -126,9 +129,8 @@ func NextDate(now time.Time, start string, repeat string) (string, error) {
 			if dateWeekDay == 0 {
 				dateWeekDay = 7
 			}
-
-			for i := 0; i < len(repeatWeekDaysInt); i++ {
-				if repeatWeekDaysInt[i] == dateWeekDay {
+			for _, v := range repeatWeekDaysInt {
+				if v == dateWeekDay {
 					break outerLoop
 				}
 			}
@@ -136,7 +138,7 @@ func NextDate(now time.Time, start string, repeat string) (string, error) {
 
 	case "m":
 		if len(repeatParametrs) != 2 && len(repeatParametrs) != 3 {
-			return "", fmt.Errorf("параметр repeat указан не верно (правильно, например, 'm 1,-1 2,8').\n")
+			return "", fmt.Errorf("параметр repeat указан не верно (правильно, например, 'm 1,-1 2,8')\n")
 		}
 
 		repeatMonthDaysStr := strings.Split(repeatParametrs[1], ",")
@@ -145,7 +147,7 @@ func NextDate(now time.Time, start string, repeat string) (string, error) {
 		for i := 0; i < len(repeatMonthDaysStr); i++ {
 			repeatMonthDaysInt[i], err = strconv.Atoi(repeatMonthDaysStr[i])
 			if err != nil || repeatMonthDaysInt[i] < -2 || repeatMonthDaysInt[i] > 31 || repeatMonthDaysInt[i] == 0 {
-				return "", fmt.Errorf("дни месяца в параметре repeat указаны не верно (правильно, например, 'm 1,-1 2,8').")
+				return "", fmt.Errorf("дни месяца в параметре repeat указаны не верно (правильно, например, 'm 1,-1 2,8')\n")
 			}
 		}
 
@@ -167,14 +169,14 @@ func NextDate(now time.Time, start string, repeat string) (string, error) {
 				lastDayDateMonth = time.Date(dateYear, dateMonth+1, 0, 0, 0, 0, 0, time.UTC).Day()
 				penultimateDayDateMonth = lastDayDateMonth - 1
 
-				for i := 0; i < len(repeatMonthDaysInt); i++ {
-					if repeatMonthDaysInt[i] == -2 && dateMonthDay == penultimateDayDateMonth {
+				for _, v := range repeatMonthDaysInt {
+					if v == -2 && dateMonthDay == penultimateDayDateMonth {
 						break outerLoopM2
 					}
-					if repeatMonthDaysInt[i] == -1 && dateMonthDay == lastDayDateMonth {
+					if v == -1 && dateMonthDay == lastDayDateMonth {
 						break outerLoopM2
 					}
-					if repeatMonthDaysInt[i] == dateMonthDay {
+					if v == dateMonthDay {
 						break outerLoopM2
 					}
 				}
@@ -189,7 +191,7 @@ func NextDate(now time.Time, start string, repeat string) (string, error) {
 			for i := 0; i < len(repeatMonthNumbersStr); i++ {
 				repeatMonthNumbersInt[i], err = strconv.Atoi(repeatMonthNumbersStr[i])
 				if err != nil || repeatMonthNumbersInt[i] < 1 || repeatMonthNumbersInt[i] > 12 {
-					return "", fmt.Errorf("номера месяцев в параметре repeat указаны не верно (правильно, например, 'm 1,-1 2,8').")
+					return "", fmt.Errorf("номера месяцев в параметре repeat указаны не верно (правильно, например, 'm 1,-1 2,8')\n")
 				}
 			}
 
@@ -207,14 +209,14 @@ func NextDate(now time.Time, start string, repeat string) (string, error) {
 
 					if repeatMonthNumbersInt[j] == int(dateMonth) {
 
-						for i := 0; i < len(repeatMonthDaysInt); i++ {
-							if repeatMonthDaysInt[i] == -2 && dateMonthDay == penultimateDayDateMonth {
+						for _, v := range repeatMonthDaysInt {
+							if v == -2 && dateMonthDay == penultimateDayDateMonth {
 								break outerLoopM3
 							}
-							if repeatMonthDaysInt[i] == -1 && dateMonthDay == lastDayDateMonth {
+							if v == -1 && dateMonthDay == lastDayDateMonth {
 								break outerLoopM3
 							}
-							if repeatMonthDaysInt[i] == dateMonthDay {
+							if v == dateMonthDay {
 								break outerLoopM3
 							}
 						}
@@ -224,7 +226,7 @@ func NextDate(now time.Time, start string, repeat string) (string, error) {
 		}
 
 	default:
-		return "", fmt.Errorf("первая позиция в параметре repeat указана не верно.")
+		return "", fmt.Errorf("первая позиция в параметре repeat указана не верно\n")
 	}
 
 	return date.Format(DateOnlyApi), nil
