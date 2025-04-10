@@ -210,6 +210,9 @@ func NextDate(now time.Time, start string, repeat string) (string, error) {
 					if repeatMonthNumbersInt[j] == int(dateMonth) {
 
 						for _, v := range repeatMonthDaysInt {
+							if v > 0 && v > lastDayDateMonth {
+								return "", fmt.Errorf("в месяце %d нет %d-го дня\n", repeatMonthNumbersInt[j], v)
+							}
 							if v == -2 && dateMonthDay == penultimateDayDateMonth {
 								break outerLoopM3
 							}
