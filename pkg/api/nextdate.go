@@ -1,46 +1,52 @@
 package api
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
 const DateOnlyApi = "20060102"
 
+var wg sync.WaitGroup
+var mu sync.Mutex
+
 // YRepeat структура для правил повторения ежегодных задач
 type YearRepeat struct {
-	nowField  time.Time
-	dateField time.Time
+	NowField  time.Time
+	mu        sync.Mutex
+	DateField time.Time
 }
 
 // DRepeat структура для правил повторения задач по дням
 type DayRepeat struct {
 	YearRepeat
-	dayIteration int
+	DayIteration int
 }
 
 // WRepeat структура для правил повторения задач по неделям
 type WeekRepeat struct {
 	YearRepeat
-	weekIteration []int
+	WeekIteration []int
 }
 
 // MRepeat структура для правил повторения задач по месяцам
 type MonthRepeat struct {
 	YearRepeat
-	monthIteration []int
+	MonthIteration []int
 }
 
 // FullMRepeat структура для правил повторения задач по месяцам
 // с учётом опционального поля
 type FullMonthRepeat struct {
 	YearRepeat
-	monthIteration []int
-	numberMonth    []int
+	MonthIteration []int
+	NumberMonth    []int
 }
 
 type CalculationNextDate interface {
@@ -84,13 +90,13 @@ func parametrParser(now, dstart, repeat string) (CalculationNextDate, error) {
 	}
 	nowTime, err := time.Parse(DateOnlyApi, now)
 	if err != nil {
-		return RepeatStruct, fmt.Errorf("ошибка парсинга параметра запроса 'now': %e\n", err)
+		return RepeatStruct, fmt.Errorf("ошибка парсинга параметра запроса 'now': %v\n", err)
 	}
 
 	// обрабатываем параметр date
 	date, err := time.Parse(DateOnlyApi, dstart)
 	if err != nil {
-		return RepeatStruct, fmt.Errorf("ошибка парсинга параметра запроса 'date': %e", err)
+		return RepeatStruct, fmt.Errorf("ошибка парсинга параметра запроса 'date': %v", err)
 	}
 
 	// обрабатываем параметр repeat и переопределяем структуру RepeatStruct
@@ -107,8 +113,8 @@ func parametrParser(now, dstart, repeat string) (CalculationNextDate, error) {
 		}
 
 		RepeatStruct = YearRepeat{
-			nowField:  nowTime,
-			dateField: date,
+			NowField:  nowTime,
+			DateField: date,
 		}
 
 	case "d":
@@ -127,8 +133,8 @@ func parametrParser(now, dstart, repeat string) (CalculationNextDate, error) {
 
 		RepeatStruct = DayRepeat{
 			YearRepeat{
-				nowField:  nowTime,
-				dateField: date,
+				NowField:  nowTime,
+				DateField: date,
 			},
 			daysCount,
 		}
@@ -141,19 +147,33 @@ func parametrParser(now, dstart, repeat string) (CalculationNextDate, error) {
 		repeatWeekDaysStr := strings.Split(repeatSlice[1], ",")
 		repeatWeekDaysInt := make([]int, 0, len(repeatWeekDaysStr))
 
+		var neverDay bool
 		for _, value := range repeatWeekDaysStr {
-			count, err := strconv.Atoi(value)
-			if err != nil || count < 1 || count > 7 {
-				return WeekRepeat{}, fmt.Errorf("дни недели в параметре repeat указаны не верно (правильно, например, 'w 1,4,7')\n")
-			}
-			repeatWeekDaysInt = append(repeatWeekDaysInt, count)
+			wg.Add(1)
+			go func(v string) {
+				defer wg.Done()
+				count, err := strconv.Atoi(v)
+				if err != nil || count < 1 || count > 7 {
+					neverDay = true
+				}
+				mu.Lock()
+				repeatWeekDaysInt = append(repeatWeekDaysInt, count)
+				mu.Unlock()
+
+			}(value)
+
+		}
+		wg.Wait()
+
+		if neverDay {
+			return WeekRepeat{}, fmt.Errorf("дни недели в параметре repeat указаны не верно (правильно, например, 'w 1,4,7')\n")
 		}
 		slices.Sort(repeatWeekDaysInt)
 
 		RepeatStruct = WeekRepeat{
 			YearRepeat{
-				nowField:  nowTime,
-				dateField: date,
+				NowField:  nowTime,
+				DateField: date,
 			},
 			repeatWeekDaysInt,
 		}
@@ -166,20 +186,34 @@ func parametrParser(now, dstart, repeat string) (CalculationNextDate, error) {
 		repeatMonthDaysStr := strings.Split(repeatSlice[1], ",")
 		repeatMonthDaysInt := make([]int, 0, len(repeatMonthDaysStr))
 
+		var neverDay bool
 		for _, value := range repeatMonthDaysStr {
-			count, err := strconv.Atoi(value)
-			if err != nil || count < -2 || count > 31 || count == 0 {
-				return MonthRepeat{}, fmt.Errorf("дни месяца в параметре repeat указаны не верно (правильно, например, 'm 1,-1 2,8')\n")
-			}
-			repeatMonthDaysInt = append(repeatMonthDaysInt, count)
+			wg.Add(1)
+			go func(v string) {
+				defer wg.Done()
+				count, err := strconv.Atoi(v)
+				if err != nil || count < -2 || count > 31 || count == 0 {
+					neverDay = true
+				}
+				mu.Lock()
+				repeatMonthDaysInt = append(repeatMonthDaysInt, count)
+				mu.Unlock()
+			}(value)
+
 		}
+		wg.Wait()
+
+		if neverDay {
+			return MonthRepeat{}, fmt.Errorf("дни месяца в параметре repeat указаны не верно (правильно, например, 'm 1,-1 2,8')\n")
+		}
+
 		slices.Sort(repeatMonthDaysInt)
 
 		if len(repeatSlice) == 2 {
 			RepeatStruct = MonthRepeat{
 				YearRepeat{
-					nowField:  nowTime,
-					dateField: date,
+					NowField:  nowTime,
+					DateField: date,
 				},
 				repeatMonthDaysInt,
 			}
@@ -190,18 +224,26 @@ func parametrParser(now, dstart, repeat string) (CalculationNextDate, error) {
 			repeatMonthNumbersInt := make([]int, 0, len(repeatMonthNumbersStr))
 
 			for _, value := range repeatMonthNumbersStr {
-				count, err := strconv.Atoi(value)
-				if err != nil || count < 1 || count > 12 {
-					return FullMonthRepeat{}, fmt.Errorf("номера месяцев в параметре repeat указаны не верно (правильно, например, 'm 1,-1 2,8')\n")
-				}
-				repeatMonthNumbersInt = append(repeatMonthNumbersInt, count)
+				wg.Add(1)
+				func(v string) (CalculationNextDate, error) {
+					defer wg.Done()
+					count, err := strconv.Atoi(v)
+					if err != nil || count < 1 || count > 12 {
+						return FullMonthRepeat{}, fmt.Errorf("номера месяцев в параметре repeat указаны не верно (правильно, например, 'm 1,-1 2,8')\n")
+					}
+					mu.Lock()
+					repeatMonthNumbersInt = append(repeatMonthNumbersInt, count)
+					mu.Unlock()
+					return FullMonthRepeat{}, nil
+				}(value)
 			}
+			wg.Wait()
 			slices.Sort(repeatMonthNumbersInt)
 
 			RepeatStruct = FullMonthRepeat{
 				YearRepeat{
-					nowField:  nowTime,
-					dateField: date,
+					NowField:  nowTime,
+					DateField: date,
 				},
 				repeatMonthDaysInt,
 				repeatMonthNumbersInt,
@@ -216,133 +258,170 @@ func parametrParser(now, dstart, repeat string) (CalculationNextDate, error) {
 }
 
 func (y YearRepeat) NextDateCalc() (time.Time, error) {
-	/* правильнее было бы так
-		for now.After(date) {
-			date = date.AddDate(1, 0, 0)
-		}
-	а не так, как ниже, но тесты проходят только с приведенным вариантом */
 
+	/* правильнее было бы так
+	for y.NowField.After(y.DateField) {
+		y.DateField = y.DateField.AddDate(1, 0, 0)
+	}
+	а не так, как ниже, но тесты проходят только с приведенным вариантом*/
 	for {
-		y.dateField = y.dateField.AddDate(1, 0, 0)
-		if y.dateField.After(y.nowField) {
+		y.DateField = y.DateField.AddDate(1, 0, 0)
+		if y.DateField.After(y.NowField) {
 			break
 		}
 	}
 
-	return y.dateField, nil
+	return y.DateField, nil
 }
 
 func (d DayRepeat) NextDateCalc() (time.Time, error) {
 	/* правильнее было бы так
-		for now.After(date) {
-			date = date.AddDate(0, 0, daysCount)
-		}
-	а не так, как ниже, но тесты проходят только с приведенным вариантом */
-
+	for d.NowField.After(d.DateField) {
+		d.DateField = d.DateField.AddDate(0, 0, d.DayIteration)
+	}
+	а не так, как ниже, но тесты проходят только с приведенным вариантом*/
 	for {
-		d.dateField = d.dateField.AddDate(0, 0, d.dayIteration)
-		if d.dateField.After(d.nowField) {
+		d.DateField = d.DateField.AddDate(0, 0, d.DayIteration)
+		if d.DateField.After(d.NowField) {
 			break
 		}
 	}
-	return d.dateField, nil
+
+	return d.DateField, nil
 }
 
 func (w WeekRepeat) NextDateCalc() (time.Time, error) {
 
-	if w.nowField.After(w.dateField) {
-		w.dateField = w.nowField
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if w.NowField.After(w.DateField) {
+		w.DateField = w.NowField
 	}
 	var dateWeekDay int
 
-outerLoop:
-	for {
-		w.dateField = w.dateField.AddDate(0, 0, 1)
-		dateWeekDay = int(w.dateField.Weekday())
-		if dateWeekDay == 0 {
-			dateWeekDay = 7
-		}
-		for _, v := range w.weekIteration {
-			if v == dateWeekDay {
-				break outerLoop
+	func(ctx context.Context) {
+		for {
+			select {
+			default:
+				w.DateField = w.DateField.AddDate(0, 0, 1)
+
+				dateWeekDay = int(w.DateField.Weekday())
+				if dateWeekDay == 0 {
+					dateWeekDay = 7
+				}
+
+				for _, v := range w.WeekIteration {
+					wg.Add(1)
+					go func(ctx context.Context, dateWeekDay int, v int) {
+						defer wg.Done()
+						if v == dateWeekDay {
+							cancel()
+						}
+					}(ctx, dateWeekDay, v)
+				}
+				wg.Wait()
+			case <-ctx.Done():
+				return
 			}
 		}
-	}
+	}(ctx)
 
-	return w.dateField, nil
+	return w.DateField, nil
 }
 
 func (m MonthRepeat) NextDateCalc() (time.Time, error) {
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	var lastDayDateMonth, penultimateDayDateMonth int
 
-	if m.nowField.After(m.dateField) {
-		m.dateField = m.nowField
+	if m.NowField.After(m.DateField) {
+		m.DateField = m.NowField
 	}
 
-outerLoopM2:
-	for {
-		m.dateField = m.dateField.AddDate(0, 0, 1)
+	func(ctx context.Context) {
+		for {
+			select {
+			default:
+				m.DateField = m.DateField.AddDate(0, 0, 1)
 
-		dateYear, dateMonth, dateMonthDay := m.dateField.Date()
-		lastDayDateMonth = time.Date(dateYear, dateMonth+1, 0, 0, 0, 0, 0, time.UTC).Day()
-		penultimateDayDateMonth = lastDayDateMonth - 1
+				dateYear, dateMonth, dateMonthDay := m.DateField.Date()
+				lastDayDateMonth = time.Date(dateYear, dateMonth+1, 0, 0, 0, 0, 0, time.UTC).Day()
+				penultimateDayDateMonth = lastDayDateMonth - 1
 
-		for _, v := range m.monthIteration {
-			if v == -2 && dateMonthDay == penultimateDayDateMonth {
-				break outerLoopM2
-			}
-			if v == -1 && dateMonthDay == lastDayDateMonth {
-				break outerLoopM2
-			}
-			if v == dateMonthDay {
-				break outerLoopM2
+				for _, v := range m.MonthIteration {
+					wg.Add(1)
+					go func(ctx context.Context, dateMonthDay, lastDayDateMonth, penultimateDayDateMonth, v int) {
+						defer wg.Done()
+						if (v == -2 && dateMonthDay == penultimateDayDateMonth) || (v == -1 && dateMonthDay == lastDayDateMonth) || (v == dateMonthDay) {
+							cancel()
+						}
+					}(ctx, dateMonthDay, lastDayDateMonth, penultimateDayDateMonth, v)
+				}
+				wg.Wait()
+			case <-ctx.Done():
+				return
 			}
 		}
-	}
+	}(ctx)
 
-	return m.dateField, nil
+	return m.DateField, nil
 }
 
 func (fm FullMonthRepeat) NextDateCalc() (time.Time, error) {
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	var lastDayDateMonth, penultimateDayDateMonth int
 
-	if fm.nowField.After(fm.dateField) {
-		fm.dateField = fm.nowField
+	if fm.NowField.After(fm.DateField) {
+		fm.DateField = fm.NowField
 	}
 
-outerLoopM3:
-	for {
-		fm.dateField = fm.dateField.AddDate(0, 0, 1)
+	func(ctx context.Context) {
+		for {
+			select {
+			default:
+				fm.DateField = fm.DateField.AddDate(0, 0, 1)
 
-		for j := 0; j < len(fm.numberMonth); j++ {
+				dateYear, dateMonth, dateMonthDay := fm.DateField.Date()
+				lastDayDateMonth = time.Date(dateYear, dateMonth+1, 0, 0, 0, 0, 0, time.UTC).Day()
+				penultimateDayDateMonth = lastDayDateMonth - 1
 
-			dateYear, dateMonth, dateMonthDay := fm.dateField.Date()
-			lastDayDateMonth = time.Date(dateYear, dateMonth+1, 0, 0, 0, 0, 0, time.UTC).Day()
-			penultimateDayDateMonth = lastDayDateMonth - 1
+				for j := 0; j < len(fm.NumberMonth); j++ {
+					wg.Add(1)
+					go func(ctx context.Context, j int) {
+						defer wg.Done()
+						if fm.NumberMonth[j] == int(dateMonth) {
 
-			if fm.numberMonth[j] == int(dateMonth) {
-
-				for _, v := range fm.monthIteration {
-					if v > 0 && v > lastDayDateMonth {
-						return time.Time{}, fmt.Errorf("в месяце %d нет %d-го дня\n", fm.numberMonth[j], v)
-					}
-					if v == -2 && dateMonthDay == penultimateDayDateMonth {
-						break outerLoopM3
-					}
-					if v == -1 && dateMonthDay == lastDayDateMonth {
-						break outerLoopM3
-					}
-					if v == dateMonthDay {
-						break outerLoopM3
-					}
+							for _, v := range fm.MonthIteration {
+								wg.Add(1)
+								go func(ctx context.Context, v int, j int) (time.Time, error) {
+									defer wg.Done()
+									if v > 0 && v > lastDayDateMonth {
+										cancel()
+										return time.Time{}, fmt.Errorf("в месяце %d нет %d-го дня\n", fm.NumberMonth[j], v)
+									}
+									if (v == -2 && dateMonthDay == penultimateDayDateMonth) || (v == -1 && dateMonthDay == lastDayDateMonth) || (v == dateMonthDay) {
+										cancel()
+									}
+									return time.Time{}, nil
+								}(ctx, v, j)
+							}
+						}
+					}(ctx, j)
 				}
+				wg.Wait()
+			case <-ctx.Done():
+				return
 			}
 		}
-	}
+	}(ctx)
 
-	return fm.dateField, nil
+	return fm.DateField, nil
 }
 
 // NextDate проверяет правильность принятых в параметре repeat значений и возвращает следующую дату для задачи
@@ -350,7 +429,7 @@ func NextDate(RepeatStruct CalculationNextDate) (string, error) {
 
 	date, err := RepeatStruct.NextDateCalc()
 	if err != nil {
-		return "", fmt.Errorf("%e\n", err)
+		return "", fmt.Errorf("%v", err)
 	}
 
 	return date.Format(DateOnlyApi), nil
