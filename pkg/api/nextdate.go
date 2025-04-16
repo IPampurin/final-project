@@ -11,6 +11,7 @@ import (
 	"time"
 )
 
+// константа формата времени
 const DateOnlyApi = "20060102"
 
 var wg sync.WaitGroup
@@ -19,7 +20,6 @@ var mu sync.Mutex
 // YRepeat структура для правил повторения ежегодных задач
 type YearRepeat struct {
 	NowField  time.Time
-	mu        sync.Mutex
 	DateField time.Time
 }
 
@@ -53,20 +53,14 @@ type CalculationNextDate interface {
 	NextDateCalc() (time.Time, error)
 }
 
+// nextDayHandler обрабатывает запрос и возвращает следующую дату задачи
 func nextDayHandler(w http.ResponseWriter, r *http.Request) {
 
 	nowParametr := r.FormValue("now")
 	dateParametr := r.FormValue("date")
 	repeatParametr := r.FormValue("repeat")
 
-	RepeatStruct, err := parametrParser(nowParametr, dateParametr, repeatParametr)
-	if err != nil {
-		fmt.Println("ошибка ввода параметров повториения задачи: ", err)
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	dateFromNextDate, err := NextDate(RepeatStruct)
+	dateFromNextDate, err := NextDate(nowParametr, dateParametr, repeatParametr)
 	if err != nil {
 		fmt.Println("ошибка получения даты следующего события: ", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -79,9 +73,10 @@ func nextDayHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// parametrParser проводит разбор и проверку полученных в запросе параметров
-func parametrParser(now, dstart, repeat string) (CalculationNextDate, error) {
+// NextDate проверяет правильность принятых в параметре repeat значений и вычисляет следующую дату для задачи
+func NextDate(now, dstart, repeat string) (string, error) {
 
+	// RepeatStruct структура валидных данных после обработки параметра repeat
 	var RepeatStruct CalculationNextDate
 
 	// обрабатываем параметр now
@@ -90,18 +85,18 @@ func parametrParser(now, dstart, repeat string) (CalculationNextDate, error) {
 	}
 	nowTime, err := time.Parse(DateOnlyApi, now)
 	if err != nil {
-		return RepeatStruct, fmt.Errorf("ошибка парсинга параметра запроса 'now': %v\n", err)
+		return "", fmt.Errorf("ошибка парсинга параметра запроса 'now': %v\n", err)
 	}
 
 	// обрабатываем параметр date
 	date, err := time.Parse(DateOnlyApi, dstart)
 	if err != nil {
-		return RepeatStruct, fmt.Errorf("ошибка парсинга параметра запроса 'date': %v", err)
+		return "", fmt.Errorf("ошибка парсинга параметра запроса 'date': %v\n", err)
 	}
 
 	// обрабатываем параметр repeat и переопределяем структуру RepeatStruct
 	if repeat == "" {
-		return RepeatStruct, fmt.Errorf("параметр repeat не указан\n")
+		return "", fmt.Errorf("параметр repeat не указан\n")
 	}
 	repeatSlice := strings.Split(repeat, " ")
 
@@ -109,7 +104,7 @@ func parametrParser(now, dstart, repeat string) (CalculationNextDate, error) {
 
 	case "y":
 		if len(repeatSlice) != 1 {
-			return YearRepeat{}, fmt.Errorf("первая позиция в параметре repeat указана не верно ('y' не требует дополнительных уточнений)\n")
+			return "", fmt.Errorf("первая позиция в параметре repeat указана не верно ('y' не требует дополнительных уточнений)\n")
 		}
 
 		RepeatStruct = YearRepeat{
@@ -119,16 +114,16 @@ func parametrParser(now, dstart, repeat string) (CalculationNextDate, error) {
 
 	case "d":
 		if len(repeatSlice) != 2 {
-			return DayRepeat{}, fmt.Errorf("параметр repeat указан не верно (правильно, например, 'd 7')\n")
+			return "", fmt.Errorf("параметр repeat указан не верно (правильно, например, 'd 7')\n")
 		}
 
 		daysCount, err := strconv.Atoi(repeatSlice[1])
 		if err != nil {
-			return DayRepeat{}, fmt.Errorf("количество дней в параметре repeat указано не верно (правильно, например, 'd 7')\n")
+			return "", fmt.Errorf("количество дней в параметре repeat указано не верно (правильно, например, 'd 7')\n")
 		}
 
 		if daysCount < 1 || 400 < daysCount {
-			return DayRepeat{}, fmt.Errorf("количество дней в параметре repeat - от 1 до 400\n")
+			return "", fmt.Errorf("количество дней в параметре repeat - от 1 до 400\n")
 		}
 
 		RepeatStruct = DayRepeat{
@@ -141,32 +136,30 @@ func parametrParser(now, dstart, repeat string) (CalculationNextDate, error) {
 
 	case "w":
 		if len(repeatSlice) != 2 {
-			return WeekRepeat{}, fmt.Errorf("параметр repeat указан не верно (правильно, например, 'w 1,4,5')\n")
+			return "", fmt.Errorf("параметр repeat указан не верно (правильно, например, 'w 1,4,5')\n")
 		}
 
 		repeatWeekDaysStr := strings.Split(repeatSlice[1], ",")
 		repeatWeekDaysInt := make([]int, 0, len(repeatWeekDaysStr))
 
-		var neverDay bool
+		var neverDayW bool
 		for _, value := range repeatWeekDaysStr {
 			wg.Add(1)
 			go func(v string) {
 				defer wg.Done()
 				count, err := strconv.Atoi(v)
 				if err != nil || count < 1 || count > 7 {
-					neverDay = true
+					neverDayW = true
 				}
 				mu.Lock()
 				repeatWeekDaysInt = append(repeatWeekDaysInt, count)
 				mu.Unlock()
-
 			}(value)
-
 		}
 		wg.Wait()
 
-		if neverDay {
-			return WeekRepeat{}, fmt.Errorf("дни недели в параметре repeat указаны не верно (правильно, например, 'w 1,4,7')\n")
+		if neverDayW {
+			return "", fmt.Errorf("дни недели в параметре repeat указаны не верно (правильно, например, 'w 1,4,7')\n")
 		}
 		slices.Sort(repeatWeekDaysInt)
 
@@ -180,31 +173,30 @@ func parametrParser(now, dstart, repeat string) (CalculationNextDate, error) {
 
 	case "m":
 		if len(repeatSlice) != 2 && len(repeatSlice) != 3 {
-			return MonthRepeat{}, fmt.Errorf("параметр repeat указан не верно (правильно, например, 'm 1,-1 2,8')\n")
+			return "", fmt.Errorf("параметр repeat указан не верно (правильно, например, 'm 1,-1 2,8')\n")
 		}
 
 		repeatMonthDaysStr := strings.Split(repeatSlice[1], ",")
 		repeatMonthDaysInt := make([]int, 0, len(repeatMonthDaysStr))
 
-		var neverDay bool
+		var neverDayM bool
 		for _, value := range repeatMonthDaysStr {
 			wg.Add(1)
 			go func(v string) {
 				defer wg.Done()
 				count, err := strconv.Atoi(v)
 				if err != nil || count < -2 || count > 31 || count == 0 {
-					neverDay = true
+					neverDayM = true
 				}
 				mu.Lock()
 				repeatMonthDaysInt = append(repeatMonthDaysInt, count)
 				mu.Unlock()
 			}(value)
-
 		}
 		wg.Wait()
 
-		if neverDay {
-			return MonthRepeat{}, fmt.Errorf("дни месяца в параметре repeat указаны не верно (правильно, например, 'm 1,-1 2,8')\n")
+		if neverDayM {
+			return "", fmt.Errorf("дни месяца в параметре repeat указаны не верно (правильно, например, 'm 1,-1 2,8')\n")
 		}
 
 		slices.Sort(repeatMonthDaysInt)
@@ -219,25 +211,29 @@ func parametrParser(now, dstart, repeat string) (CalculationNextDate, error) {
 			}
 		}
 
+		var neverDayFM bool
 		if len(repeatSlice) == 3 {
 			repeatMonthNumbersStr := strings.Split(repeatSlice[2], ",")
 			repeatMonthNumbersInt := make([]int, 0, len(repeatMonthNumbersStr))
 
 			for _, value := range repeatMonthNumbersStr {
 				wg.Add(1)
-				func(v string) (CalculationNextDate, error) {
+				go func(v string) {
 					defer wg.Done()
 					count, err := strconv.Atoi(v)
 					if err != nil || count < 1 || count > 12 {
-						return FullMonthRepeat{}, fmt.Errorf("номера месяцев в параметре repeat указаны не верно (правильно, например, 'm 1,-1 2,8')\n")
+						neverDayFM = true
 					}
 					mu.Lock()
 					repeatMonthNumbersInt = append(repeatMonthNumbersInt, count)
 					mu.Unlock()
-					return FullMonthRepeat{}, nil
 				}(value)
 			}
 			wg.Wait()
+
+			if neverDayFM {
+				return "", fmt.Errorf("номера месяцев в параметре repeat указаны не верно (правильно, например, 'm 1,-1 2,8')\n")
+			}
 			slices.Sort(repeatMonthNumbersInt)
 
 			RepeatStruct = FullMonthRepeat{
@@ -251,14 +247,19 @@ func parametrParser(now, dstart, repeat string) (CalculationNextDate, error) {
 		}
 
 	default:
-		return RepeatStruct, fmt.Errorf("первая позиция в параметре repeat указана не верно\n")
+		return "", fmt.Errorf("первая позиция в параметре repeat указана не верно\n")
 	}
 
-	return RepeatStruct, nil
+	date, err = RepeatStruct.NextDateCalc()
+	if err != nil {
+		return "", fmt.Errorf("%v", err)
+	}
+
+	return date.Format(DateOnlyApi), nil
+
 }
 
 func (y YearRepeat) NextDateCalc() (time.Time, error) {
-
 	/* правильнее было бы так
 	for y.NowField.After(y.DateField) {
 		y.DateField = y.DateField.AddDate(1, 0, 0)
@@ -381,6 +382,8 @@ func (fm FullMonthRepeat) NextDateCalc() (time.Time, error) {
 		fm.DateField = fm.NowField
 	}
 
+	var neverMonthDay bool
+	var message string
 	func(ctx context.Context) {
 		for {
 			select {
@@ -399,16 +402,16 @@ func (fm FullMonthRepeat) NextDateCalc() (time.Time, error) {
 
 							for _, v := range fm.MonthIteration {
 								wg.Add(1)
-								go func(ctx context.Context, v int, j int) (time.Time, error) {
+								go func(ctx context.Context, v int, j int) {
 									defer wg.Done()
 									if v > 0 && v > lastDayDateMonth {
+										neverMonthDay = true
+										message = fmt.Sprintf("в месяце %d нет %d-го дня\n", fm.NumberMonth[j], v)
 										cancel()
-										return time.Time{}, fmt.Errorf("в месяце %d нет %d-го дня\n", fm.NumberMonth[j], v)
 									}
 									if (v == -2 && dateMonthDay == penultimateDayDateMonth) || (v == -1 && dateMonthDay == lastDayDateMonth) || (v == dateMonthDay) {
 										cancel()
 									}
-									return time.Time{}, nil
 								}(ctx, v, j)
 							}
 						}
@@ -421,16 +424,9 @@ func (fm FullMonthRepeat) NextDateCalc() (time.Time, error) {
 		}
 	}(ctx)
 
-	return fm.DateField, nil
-}
-
-// NextDate проверяет правильность принятых в параметре repeat значений и возвращает следующую дату для задачи
-func NextDate(RepeatStruct CalculationNextDate) (string, error) {
-
-	date, err := RepeatStruct.NextDateCalc()
-	if err != nil {
-		return "", fmt.Errorf("%v", err)
+	if neverMonthDay {
+		return time.Time{}, fmt.Errorf(message)
 	}
 
-	return date.Format(DateOnlyApi), nil
+	return fm.DateField, nil
 }
