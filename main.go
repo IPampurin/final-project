@@ -12,7 +12,7 @@ func main() {
 
 	err = db.Init("scheduler.db")
 	if err != nil {
-		fmt.Printf("ошибка вызова Init: %v\n", err)
+		fmt.Printf("ошибка вызова db.Init: %v\n", err)
 		return
 	}
 
