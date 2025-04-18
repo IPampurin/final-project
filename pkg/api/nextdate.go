@@ -406,7 +406,7 @@ func (fm FullMonthRepeat) NextDateCalc() (time.Time, error) {
 									defer wg.Done()
 									if v > 0 && v > lastDayDateMonth {
 										neverMonthDay = true
-										message = fmt.Sprintf("в месяце %d нет %d-го дня\n", fm.NumberMonth[j], v)
+										message = fmt.Sprintf("в месяце %d нет %d-го дня", fm.NumberMonth[j], v)
 										cancel()
 									}
 									if (v == -2 && dateMonthDay == penultimateDayDateMonth) || (v == -1 && dateMonthDay == lastDayDateMonth) || (v == dateMonthDay) {

@@ -11,53 +11,54 @@ import (
 	"github.com/IPampurin/final-project/pkg/db"
 )
 
+type Answer struct {
+	ID    string `json:"id,omitempty"`
+	Error string `json:"error,omitempty"`
+}
+
 func addTaskHandler(w http.ResponseWriter, r *http.Request) {
 
-	var task *db.Task
+	var task db.Task
 	var buf bytes.Buffer
+	var ans Answer
 
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		ans.Error = fmt.Sprintf("невозможно прочитать тело запроса %v", err.Error())
+		writerJSON(w, http.StatusBadRequest, ans)
 		return
 	}
 
 	err = json.Unmarshal(buf.Bytes(), &task)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		ans.Error = fmt.Sprintf("невозможно десериализовать тело запроса %v", err.Error())
+		writerJSON(w, http.StatusBadRequest, ans)
 		return
 	}
 
 	if task.Title == "" {
-		message := "не указан заголовок задачи"
-		http.Error(w, message, http.StatusBadRequest)
+		ans.Error = "не указан заголовок задачи"
+		writerJSON(w, http.StatusBadRequest, ans)
 		return
 	}
 
-	err = checkDate(task)
+	err = checkDate(&task)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		ans.Error = err.Error()
+		writerJSON(w, http.StatusBadRequest, ans)
 		return
 	}
 
-	id, err := db.AddTask(task)
+	id, err := db.AddTask(&task)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		ans.Error = err.Error()
+		writerJSON(w, http.StatusBadRequest, ans)
 		return
 	}
 
-	task.ID = strconv.Itoa(int(id))
+	ans.ID = strconv.Itoa(int(id))
 
-	_, err = json.Marshal(task.ID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(task.ID))
-
+	writerJSON(w, http.StatusCreated, ans)
 }
 
 func checkDate(task *db.Task) error {
@@ -73,8 +74,9 @@ func checkDate(task *db.Task) error {
 	}
 
 	var next string
-	if task.Repeat != "" {
-		next, err = NextDate(now.Format(DateOnlyApi), task.Date, task.Repeat)
+
+	if len(task.Repeat) != 0 {
+		next, err = NextDate("", task.Date, task.Repeat)
 		if err != nil {
 			return err
 		}
@@ -88,5 +90,25 @@ func checkDate(task *db.Task) error {
 		}
 	}
 
+	if now.Format(DateOnlyApi) == t.Format(DateOnlyApi) {
+		task.Date = now.Format(DateOnlyApi)
+	}
+
 	return nil
+}
+
+func writerJSON(w http.ResponseWriter, status int, data interface{}) {
+
+	emergencyError := `{"fatal error":"%q"}`
+
+	js, err := json.Marshal(data)
+	if err != nil {
+		status = http.StatusInternalServerError
+		js = []byte(fmt.Sprintf(emergencyError, err))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	w.Write(js)
 }

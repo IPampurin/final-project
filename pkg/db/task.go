@@ -30,13 +30,8 @@ func AddTask(task *Task) (int64, error) {
 		sql.Named("title", task.Title),
 		sql.Named("comment", task.Comment),
 		sql.Named("repeat", task.Repeat))
-	if err != nil {
-		return 0, err
-	}
-
-	id, err = res.LastInsertId()
-	if err != nil {
-		return 0, err
+	if err == nil {
+		id, err = res.LastInsertId()
 	}
 
 	return id, err
