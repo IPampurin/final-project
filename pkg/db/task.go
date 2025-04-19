@@ -36,3 +36,37 @@ func AddTask(task *Task) (int64, error) {
 
 	return id, err
 }
+
+func Tasks(limit int) ([]*Task, error) {
+
+	db, err := sql.Open("sqlite", "scheduler.db")
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	var allTasks []*Task
+
+	rows, err := db.Query("SELECT * FROM scheduler ORDER BY date LIMIT :limit", sql.Named("limit", limit))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		task := Task{}
+
+		err := rows.Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+		if err != nil {
+			return nil, err
+		}
+
+		allTasks = append(allTasks, &task)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return allTasks, nil
+}

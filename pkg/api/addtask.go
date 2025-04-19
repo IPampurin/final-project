@@ -11,7 +11,7 @@ import (
 	"github.com/IPampurin/final-project/pkg/db"
 )
 
-type Answer struct {
+type AnswerAddTask struct {
 	ID    string `json:"id,omitempty"`
 	Error string `json:"error,omitempty"`
 }
@@ -20,45 +20,45 @@ func addTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 	var task db.Task
 	var buf bytes.Buffer
-	var ans Answer
+	var ans AnswerAddTask
 
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
 		ans.Error = fmt.Sprintf("невозможно прочитать тело запроса %v", err.Error())
-		writerJSON(w, http.StatusBadRequest, ans)
+		WriterJSON(w, http.StatusBadRequest, ans)
 		return
 	}
 
 	err = json.Unmarshal(buf.Bytes(), &task)
 	if err != nil {
 		ans.Error = fmt.Sprintf("невозможно десериализовать тело запроса %v", err.Error())
-		writerJSON(w, http.StatusBadRequest, ans)
+		WriterJSON(w, http.StatusBadRequest, ans)
 		return
 	}
 
 	if task.Title == "" {
 		ans.Error = "не указан заголовок задачи"
-		writerJSON(w, http.StatusBadRequest, ans)
+		WriterJSON(w, http.StatusBadRequest, ans)
 		return
 	}
 
 	err = checkDate(&task)
 	if err != nil {
 		ans.Error = err.Error()
-		writerJSON(w, http.StatusBadRequest, ans)
+		WriterJSON(w, http.StatusBadRequest, ans)
 		return
 	}
 
 	id, err := db.AddTask(&task)
 	if err != nil {
 		ans.Error = err.Error()
-		writerJSON(w, http.StatusBadRequest, ans)
+		WriterJSON(w, http.StatusBadRequest, ans)
 		return
 	}
 
 	ans.ID = strconv.Itoa(int(id))
 
-	writerJSON(w, http.StatusCreated, ans)
+	WriterJSON(w, http.StatusCreated, ans)
 }
 
 func checkDate(task *db.Task) error {
@@ -97,7 +97,7 @@ func checkDate(task *db.Task) error {
 	return nil
 }
 
-func writerJSON(w http.ResponseWriter, status int, data interface{}) {
+func WriterJSON(w http.ResponseWriter, status int, data interface{}) {
 
 	emergencyError := `{"fatal error":"%q"}`
 
