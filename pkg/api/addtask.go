@@ -11,6 +11,7 @@ import (
 	"github.com/IPampurin/final-project/pkg/db"
 )
 
+// AnswerAddTask структура для вывода результата или ошибки в формате по ТЗ
 type AnswerAddTask struct {
 	ID    string `json:"id,omitempty"`
 	Error string `json:"error,omitempty"`

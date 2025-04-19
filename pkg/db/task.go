@@ -2,8 +2,14 @@ package db
 
 import (
 	"database/sql"
+	"time"
 
 	_ "modernc.org/sqlite"
+)
+
+const (
+	DateFromSearch = "02.01.2006"
+	DateOnlyDB     = "20060102"
 )
 
 type Task struct {
@@ -37,7 +43,7 @@ func AddTask(task *Task) (int64, error) {
 	return id, err
 }
 
-func Tasks(limit int) ([]*Task, error) {
+func Tasks(limit int, search string) ([]*Task, error) {
 
 	db, err := sql.Open("sqlite", "scheduler.db")
 	if err != nil {
@@ -46,26 +52,58 @@ func Tasks(limit int) ([]*Task, error) {
 	defer db.Close()
 
 	var allTasks []*Task
+	var rows *sql.Rows
 
-	rows, err := db.Query("SELECT * FROM scheduler ORDER BY date LIMIT :limit", sql.Named("limit", limit))
-	if err != nil {
-		return nil, err
+	switch {
+
+	case search == "":
+
+		rows, err = db.Query("SELECT * FROM scheduler ORDER BY date LIMIT :limit",
+			sql.Named("limit", limit))
+		if err != nil {
+			return []*Task{}, err
+		}
+		defer rows.Close()
+
+	case search != "":
+
+		searchTime, errFromParse := time.Parse(DateFromSearch, search)
+
+		if errFromParse == nil {
+			rows, err = db.Query("SELECT * FROM scheduler WHERE date = :search_date ORDER BY date LIMIT :limit",
+				sql.Named("search_date", searchTime.Format(DateOnlyDB)),
+				sql.Named("limit", limit))
+			if err != nil {
+				return []*Task{}, err
+			}
+			defer rows.Close()
+		}
+
+		if errFromParse != nil {
+			search = "%" + search + "%"
+			rows, err = db.Query("SELECT * FROM scheduler WHERE title LIKE :search OR comment LIKE :search ORDER BY date LIMIT :limit",
+				sql.Named("search", search),
+				sql.Named("limit", limit))
+			if err != nil {
+				return []*Task{}, err
+			}
+			defer rows.Close()
+		}
 	}
-	defer rows.Close()
 
 	for rows.Next() {
 		task := Task{}
 
 		err := rows.Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
 		if err != nil {
-			return nil, err
+			return []*Task{}, err
 		}
 
 		allTasks = append(allTasks, &task)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return []*Task{}, err
 	}
 
 	return allTasks, nil
