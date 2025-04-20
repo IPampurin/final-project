@@ -9,8 +9,10 @@ func taskHandler(w http.ResponseWriter, r *http.Request) {
 		addTaskHandler(w, r)
 
 	case http.MethodGet:
-		tasksHandler(w, r)
-		//case http.MethodPut:
+		oneTasksHandler(w, r)
+
+	case http.MethodPut:
+		updateTaskHandler(w, r)
 		//case http.MethodDelete:
 		//default:
 	}

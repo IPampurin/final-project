@@ -16,15 +16,17 @@ type TasksResp struct {
 // максимальное число строк к выводу
 const RowsLimit = 50
 
-// AnswerTasks структура для вывода ошибки в формате по ТЗ
-type AnswerTasks struct {
+// AnswerTasksErr структура для вывода ошибки в формате по ТЗ
+type AnswerTasksErr struct {
 	Error string `json:"error,omitempty"`
 }
 
+// tasksHandler выводит список всех задач
 func tasksHandler(w http.ResponseWriter, r *http.Request) {
 
-	var ans AnswerTasks
+	var ans AnswerTasksErr
 	var result TasksResp
+	var tasks []*db.Task
 
 	search := r.FormValue("search")
 
@@ -42,4 +44,27 @@ func tasksHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriterJSON(w, http.StatusOK, result)
+}
+
+// oneTasksHandler выводит одну задачу по её id при GET-запросе
+func oneTasksHandler(w http.ResponseWriter, r *http.Request) {
+
+	var ans AnswerTasksErr
+
+	id := r.FormValue("id")
+
+	if id == "" {
+		ans.Error = "Не указан идентификатор задачи"
+		WriterJSON(w, http.StatusBadRequest, ans)
+		return
+	}
+
+	task, err := db.GetTask(id)
+	if err != nil {
+		ans.Error = fmt.Sprintf("при получении задачи с id = %v возникла ошибка: %v", id, err.Error())
+		WriterJSON(w, http.StatusBadRequest, ans)
+		return
+	}
+
+	WriterJSON(w, http.StatusOK, task)
 }

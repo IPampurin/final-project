@@ -2,6 +2,7 @@ package db
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -107,4 +108,53 @@ func Tasks(limit int, search string) ([]*Task, error) {
 	}
 
 	return allTasks, nil
+}
+
+func GetTask(id string) (*Task, error) {
+
+	db, err := sql.Open("sqlite", "scheduler.db")
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	task := Task{}
+
+	row := db.QueryRow("SELECT * FROM scheduler WHERE id = :id",
+		sql.Named("id", id))
+	err = row.Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+	if err != nil {
+		return &Task{}, err
+	}
+
+	return &task, nil
+}
+
+func UpdateTask(task *Task) error {
+
+	db, err := sql.Open("sqlite", "scheduler.db")
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	res, err := db.Exec("UPDATE scheduler SET date = :date, title = :title, comment = :comment, repeat = :repeat WHERE id = :id",
+		sql.Named("date", &task.Date),
+		sql.Named("title", &task.Title),
+		sql.Named("comment", &task.Comment),
+		sql.Named("repeat", &task.Repeat),
+		sql.Named("id", &task.ID))
+	if err != nil {
+		return fmt.Errorf("не удалось обновить данные задачи")
+	}
+
+	count, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if count == 0 {
+		return fmt.Errorf("плохой id для обновления задачи")
+	}
+
+	return nil
 }
