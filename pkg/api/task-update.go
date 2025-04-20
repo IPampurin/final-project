@@ -14,6 +14,7 @@ type AnswerUpdateErr struct {
 	Error string `json:"error,omitempty"`
 }
 
+// обновляет данные о задаче
 func updateTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 	var task db.Task

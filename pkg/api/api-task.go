@@ -2,6 +2,7 @@ package api
 
 import "net/http"
 
+// распределяет запросы эндпойнта "/api/task" по типу
 func taskHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
@@ -13,8 +14,9 @@ func taskHandler(w http.ResponseWriter, r *http.Request) {
 
 	case http.MethodPut:
 		updateTaskHandler(w, r)
-		//case http.MethodDelete:
-		//default:
+
+	case http.MethodDelete:
+		deleteTaskHandler(w, r)
 	}
 
 }

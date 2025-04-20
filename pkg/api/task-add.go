@@ -17,6 +17,7 @@ type AnswerAddTask struct {
 	Error string `json:"error,omitempty"`
 }
 
+// addTaskHandler служит для добавления задачи
 func addTaskHandler(w http.ResponseWriter, r *http.Request) {
 
 	var task db.Task
@@ -62,6 +63,7 @@ func addTaskHandler(w http.ResponseWriter, r *http.Request) {
 	WriterJSON(w, http.StatusCreated, ans)
 }
 
+// checkDate проверяет дату для addTaskHandler
 func checkDate(task *db.Task) error {
 
 	now := time.Now()
@@ -96,20 +98,4 @@ func checkDate(task *db.Task) error {
 	}
 
 	return nil
-}
-
-func WriterJSON(w http.ResponseWriter, status int, data interface{}) {
-
-	emergencyError := `{"fatal error":"%q"}`
-
-	js, err := json.Marshal(data)
-	if err != nil {
-		status = http.StatusInternalServerError
-		js = []byte(fmt.Sprintf(emergencyError, err))
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	w.Write(js)
 }

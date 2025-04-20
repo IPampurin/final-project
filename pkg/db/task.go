@@ -21,6 +21,7 @@ type Task struct {
 	Repeat  string `json:"repeat"`
 }
 
+// добавляет задачу в БД
 func AddTask(task *Task) (int64, error) {
 
 	db, err := sql.Open("sqlite", "scheduler.db")
@@ -44,6 +45,7 @@ func AddTask(task *Task) (int64, error) {
 	return id, err
 }
 
+// выводит все задачи из БД
 func Tasks(limit int, search string) ([]*Task, error) {
 
 	db, err := sql.Open("sqlite", "scheduler.db")
@@ -110,6 +112,7 @@ func Tasks(limit int, search string) ([]*Task, error) {
 	return allTasks, nil
 }
 
+// выводит задачу по id из БД
 func GetTask(id string) (*Task, error) {
 
 	db, err := sql.Open("sqlite", "scheduler.db")
@@ -130,6 +133,7 @@ func GetTask(id string) (*Task, error) {
 	return &task, nil
 }
 
+// обновляет данные о задаче в БД
 func UpdateTask(task *Task) error {
 
 	db, err := sql.Open("sqlite", "scheduler.db")
@@ -150,10 +154,28 @@ func UpdateTask(task *Task) error {
 
 	count, err := res.RowsAffected()
 	if err != nil {
-		return err
+		return fmt.Errorf("не удалось обновить данные задачи, ошибка: %v", err)
 	}
 	if count == 0 {
 		return fmt.Errorf("плохой id для обновления задачи")
+	}
+
+	return nil
+}
+
+// удаляет задачу по id из БД
+func DeleteTask(id string) error {
+
+	db, err := sql.Open("sqlite", "scheduler.db")
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.Exec("DELETE FROM scheduler WHERE id = :id",
+		sql.Named("id", id))
+	if err != nil {
+		return fmt.Errorf("не удалось удалить данные задачи, ошибка: %v", err)
 	}
 
 	return nil

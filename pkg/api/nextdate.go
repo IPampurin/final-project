@@ -140,6 +140,10 @@ func NextDate(now, dstart, repeat string) (string, error) {
 		}
 
 		repeatWeekDaysStr := strings.Split(repeatSlice[1], ",")
+		// проверяем на излишне большой	объём данных
+		if len(repeatWeekDaysStr) > 7 {
+			return "", fmt.Errorf("параметр repeat указан не верно - вероятно, номера дней повторяются")
+		}
 		repeatWeekDaysInt := make([]int, 0, len(repeatWeekDaysStr))
 
 		var neverDayW bool
@@ -177,6 +181,10 @@ func NextDate(now, dstart, repeat string) (string, error) {
 		}
 
 		repeatMonthDaysStr := strings.Split(repeatSlice[1], ",")
+		// проверяем на излишне большой	объём данных
+		if len(repeatMonthDaysStr) > 33 {
+			return "", fmt.Errorf("параметр repeat указан не верно - вероятно, номера дней повторяются")
+		}
 		repeatMonthDaysInt := make([]int, 0, len(repeatMonthDaysStr))
 
 		var neverDayM bool
@@ -214,6 +222,10 @@ func NextDate(now, dstart, repeat string) (string, error) {
 		var neverDayFM bool
 		if len(repeatSlice) == 3 {
 			repeatMonthNumbersStr := strings.Split(repeatSlice[2], ",")
+			// проверяем на излишне большой	объём данных
+			if len(repeatMonthNumbersStr) > 12 {
+				return "", fmt.Errorf("параметр repeat указан не верно - вероятно, номера месяцев повторяются")
+			}
 			repeatMonthNumbersInt := make([]int, 0, len(repeatMonthNumbersStr))
 
 			for _, value := range repeatMonthNumbersStr {
