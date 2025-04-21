@@ -77,3 +77,21 @@ jobs:
           CGO_ENABLED=0 GOOS=linux go run main.go &
           sleep 100
           go test -run ^TestEditTask$ ./tests
+
+    - name: Run TestDone
+      run: |
+          CGO_ENABLED=0 GOOS=linux go run main.go &
+          sleep 100
+          go test -run ^TestDone$ ./tests
+
+    - name: Run TestDelTask
+      run: |
+          CGO_ENABLED=0 GOOS=linux go run main.go &
+          sleep 100
+          go test -run ^TestDelTask$ ./tests
+
+    - name: Run test
+      run: |
+          CGO_ENABLED=0 GOOS=linux go run main.go &
+          sleep 100
+          go test ./tests
