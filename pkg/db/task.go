@@ -1,5 +1,7 @@
 package db
 
+// В данном файле собраны функции AddTask, Tasks, GetTask, UpdateTask, DeleteTask
+
 import (
 	"database/sql"
 	"fmt"
@@ -14,6 +16,7 @@ const (
 	DateOnlyDB     = "20060102"
 )
 
+// Task структура задания
 type Task struct {
 	ID      string `json:"id"`
 	Date    string `json:"date"`
@@ -22,7 +25,7 @@ type Task struct {
 	Repeat  string `json:"repeat"`
 }
 
-// добавляет задачу в БД
+// AddTask добавляет задачу в БД
 func AddTask(task *Task) (int64, error) {
 
 	dbFile := "scheduler.db"
@@ -52,7 +55,7 @@ func AddTask(task *Task) (int64, error) {
 	return id, err
 }
 
-// выводит все задачи из БД
+// Tasks выводит все задачи из БД
 func Tasks(limit int, search string) ([]*Task, error) {
 
 	dbFile := "scheduler.db"
@@ -125,7 +128,7 @@ func Tasks(limit int, search string) ([]*Task, error) {
 	return allTasks, nil
 }
 
-// выводит задачу по id из БД
+// GetTask выводит задачу по id из БД
 func GetTask(id string) (*Task, error) {
 
 	dbFile := "scheduler.db"
@@ -152,7 +155,7 @@ func GetTask(id string) (*Task, error) {
 	return &task, nil
 }
 
-// обновляет данные о задаче в БД
+// UpdateTask обновляет данные о задаче в БД
 func UpdateTask(task *Task) error {
 
 	dbFile := "scheduler.db"
@@ -188,7 +191,7 @@ func UpdateTask(task *Task) error {
 	return nil
 }
 
-// удаляет задачу по id из БД
+// DeleteTask удаляет задачу по id из БД
 func DeleteTask(id string) error {
 
 	dbFile := "scheduler.db"

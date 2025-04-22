@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-// WriterJSON служит для направления ответа в формате JSON
+// WriterJSON служит для формирования и направления ответа в формате JSON
 func WriterJSON(w http.ResponseWriter, status int, data interface{}) {
 
 	emergencyError := `{"fatal error":"%q"}`

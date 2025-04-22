@@ -10,15 +10,18 @@ import (
 	"os"
 )
 
+// AnswerAuth структура для формирования ответа на запрос
 type AnswerAuth struct {
 	Token string `json:"token,omitempty"`
 	Err   string `json:"error,omitempty"`
 }
 
+// Password структура
 type Password struct {
 	InputPass string `json:"password"`
 }
 
+// authHandler служит для установки пароля
 func authHandler(w http.ResponseWriter, r *http.Request) {
 
 	var ans AnswerAuth
@@ -57,6 +60,7 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
+// auth проверяет соответствие пароля хэшу в cookie
 func auth(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 

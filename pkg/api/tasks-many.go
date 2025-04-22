@@ -9,6 +9,7 @@ import (
 
 const DateFromSearch = "02.01.2006"
 
+// TasksResp структура для вывода результата
 type TasksResp struct {
 	Tasks []*db.Task `json:"tasks"`
 }

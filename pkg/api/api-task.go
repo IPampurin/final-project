@@ -2,7 +2,7 @@ package api
 
 import "net/http"
 
-// распределяет запросы эндпойнта "/api/task" по типу
+// taskHandler распределяет запросы эндпойнта "/api/task" по типу
 func taskHandler(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {

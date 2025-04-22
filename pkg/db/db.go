@@ -10,6 +10,7 @@ import (
 
 var db *sql.DB
 
+// schema схема таблицы БД
 const schema = `
 CREATE TABLE scheduler (
 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,6 +21,7 @@ repeat VARCHAR(128) NOT NULL DEFAULT ""
 );
 CREATE INDEX scheduler_date ON scheduler (date);`
 
+// Init проверяет наличие и создаёт БД
 func Init(dbFile string) error {
 
 	envDbFile, ok := os.LookupEnv("TODO_DBFILE")
