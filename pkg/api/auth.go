@@ -39,13 +39,12 @@ func authHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pass := os.Getenv("TODO_PASSWORD")
+	if len(input.InputPass) > 0 {
 
-	if len(pass) > 0 {
-
-		if pass != input.InputPass {
-			ans.Err = "Неверный пароль"
-			WriterJSON(w, http.StatusUnauthorized, ans)
+		err = os.Setenv("TODO_PASSWORD", input.InputPass)
+		if err != nil {
+			ans.Err = fmt.Sprintf("ошибка Setenv: %v", err.Error())
+			WriterJSON(w, http.StatusBadRequest, ans)
 			return
 		}
 	}

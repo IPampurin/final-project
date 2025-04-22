@@ -3,6 +3,7 @@ package db
 import (
 	"database/sql"
 	"fmt"
+	"os"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -24,7 +25,13 @@ type Task struct {
 // добавляет задачу в БД
 func AddTask(task *Task) (int64, error) {
 
-	db, err := sql.Open("sqlite", "scheduler.db")
+	dbFile := "scheduler.db"
+	envDbFile, ok := os.LookupEnv("TODO_DBFILE")
+	if !ok && len(envDbFile) > 0 {
+		dbFile = envDbFile
+	}
+
+	db, err := sql.Open("sqlite", dbFile)
 	if err != nil {
 		return 0, err
 	}
@@ -48,7 +55,13 @@ func AddTask(task *Task) (int64, error) {
 // выводит все задачи из БД
 func Tasks(limit int, search string) ([]*Task, error) {
 
-	db, err := sql.Open("sqlite", "scheduler.db")
+	dbFile := "scheduler.db"
+	envDbFile, ok := os.LookupEnv("TODO_DBFILE")
+	if !ok && len(envDbFile) > 0 {
+		dbFile = envDbFile
+	}
+
+	db, err := sql.Open("sqlite", dbFile)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +128,13 @@ func Tasks(limit int, search string) ([]*Task, error) {
 // выводит задачу по id из БД
 func GetTask(id string) (*Task, error) {
 
-	db, err := sql.Open("sqlite", "scheduler.db")
+	dbFile := "scheduler.db"
+	envDbFile, ok := os.LookupEnv("TODO_DBFILE")
+	if !ok && len(envDbFile) > 0 {
+		dbFile = envDbFile
+	}
+
+	db, err := sql.Open("sqlite", dbFile)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +155,13 @@ func GetTask(id string) (*Task, error) {
 // обновляет данные о задаче в БД
 func UpdateTask(task *Task) error {
 
-	db, err := sql.Open("sqlite", "scheduler.db")
+	dbFile := "scheduler.db"
+	envDbFile, ok := os.LookupEnv("TODO_DBFILE")
+	if !ok && len(envDbFile) > 0 {
+		dbFile = envDbFile
+	}
+
+	db, err := sql.Open("sqlite", dbFile)
 	if err != nil {
 		return err
 	}
@@ -166,7 +191,13 @@ func UpdateTask(task *Task) error {
 // удаляет задачу по id из БД
 func DeleteTask(id string) error {
 
-	db, err := sql.Open("sqlite", "scheduler.db")
+	dbFile := "scheduler.db"
+	envDbFile, ok := os.LookupEnv("TODO_DBFILE")
+	if !ok && len(envDbFile) > 0 {
+		dbFile = envDbFile
+	}
+
+	db, err := sql.Open("sqlite", dbFile)
 	if err != nil {
 		return err
 	}
