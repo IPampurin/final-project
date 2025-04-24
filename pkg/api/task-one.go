@@ -23,7 +23,7 @@ func oneTasksHandler(w http.ResponseWriter, r *http.Request) {
 	task, err := db.GetTask(id)
 	if err != nil {
 		ans.Error = fmt.Sprintf("при получении задачи с id = %v возникла ошибка: %v", id, err.Error())
-		WriterJSON(w, http.StatusBadRequest, ans)
+		WriterJSON(w, http.StatusInternalServerError, ans)
 		return
 	}
 

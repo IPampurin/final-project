@@ -34,7 +34,7 @@ func tasksHandler(w http.ResponseWriter, r *http.Request) {
 	tasks, err := db.Tasks(RowsLimit, search)
 	if err != nil {
 		ans.Error = fmt.Sprintf("ошибка при получении списка задач %v", err.Error())
-		WriterJSON(w, http.StatusBadRequest, ans)
+		WriterJSON(w, http.StatusInternalServerError, ans)
 		return
 	}
 

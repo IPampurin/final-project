@@ -36,7 +36,7 @@ func deleteTaskHandler(w http.ResponseWriter, r *http.Request) {
 	err = db.DeleteTask(id)
 	if err != nil {
 		ans.Error = fmt.Sprintf("при удалении задачи с id = %v возникла ошибка: %v", id, err.Error())
-		WriterJSON(w, http.StatusBadRequest, ans)
+		WriterJSON(w, http.StatusInternalServerError, ans)
 		return
 	}
 

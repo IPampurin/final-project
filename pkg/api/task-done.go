@@ -28,7 +28,7 @@ func doneTaskHandler(w http.ResponseWriter, r *http.Request) {
 	task, err := db.GetTask(id)
 	if err != nil {
 		ans.Error = fmt.Sprintf("при получении задачи с id = %v возникла ошибка: %v", id, err.Error())
-		WriterJSON(w, http.StatusBadRequest, ans)
+		WriterJSON(w, http.StatusInternalServerError, ans)
 		return
 	}
 
@@ -37,7 +37,7 @@ func doneTaskHandler(w http.ResponseWriter, r *http.Request) {
 		err = db.DeleteTask(id)
 		if err != nil {
 			ans.Error = fmt.Sprintf("при удалении задачи с id = %v возникла ошибка: %v", id, err.Error())
-			WriterJSON(w, http.StatusBadRequest, ans)
+			WriterJSON(w, http.StatusInternalServerError, ans)
 			return
 		}
 	}
@@ -56,7 +56,7 @@ func doneTaskHandler(w http.ResponseWriter, r *http.Request) {
 		err = db.UpdateTask(task)
 		if err != nil {
 			ans.Error = fmt.Sprintf("при обновлении следующей даты для удаляемой задачи с id = %v возникла ошибка: %v", id, err.Error())
-			WriterJSON(w, http.StatusBadRequest, ans)
+			WriterJSON(w, http.StatusInternalServerError, ans)
 			return
 		}
 	}

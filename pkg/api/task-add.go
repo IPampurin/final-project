@@ -54,7 +54,7 @@ func addTaskHandler(w http.ResponseWriter, r *http.Request) {
 	id, err := db.AddTask(&task)
 	if err != nil {
 		ans.Error = err.Error()
-		WriterJSON(w, http.StatusBadRequest, ans)
+		WriterJSON(w, http.StatusInternalServerError, ans)
 		return
 	}
 
