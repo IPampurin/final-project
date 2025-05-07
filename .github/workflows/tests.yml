@@ -29,5 +29,69 @@ jobs:
         CGO_ENABLED=0 GOOS=linux go run main.go &
         sleep 100
         go test -run ^TestApp$ ./tests
+
+    - name: Run DB
+      run: |
+        CGO_ENABLED=0 GOOS=linux go run main.go &
+        sleep 100
+        go test -run ^TestDB$ ./tests 
         
+    - name: Run NextDate
+      run: |
+        CGO_ENABLED=0 GOOS=linux go run main.go &
+        sleep 100
+        go test -run ^TestNextDate$ ./tests 
         
+    - name: Run DB
+      run: |
+        CGO_ENABLED=0 GOOS=linux go run main.go &
+        sleep 100
+        go test -run ^TestDB$ ./tests 
+                
+    - name: Run NextDate
+      run: |
+        CGO_ENABLED=0 GOOS=linux go run main.go &
+        sleep 100
+        go test -run ^TestNextDate$ ./tests 
+    
+    - name: Run AddTask
+      run: |
+        CGO_ENABLED=0 GOOS=linux go run main.go &
+        sleep 100
+        go test -run ^TestAddTask$ ./tests 
+
+    - name: Run TestTasks
+      run: |
+        CGO_ENABLED=0 GOOS=linux go run main.go &
+        sleep 100
+        go test -run ^TestTasks$ ./tests
+
+    - name: Run TestTask
+      run: |
+        CGO_ENABLED=0 GOOS=linux go run main.go &
+        sleep 100
+        go test -run ^TestTask$ ./tests
+
+    - name: Run TestEditTask
+      run: |
+          CGO_ENABLED=0 GOOS=linux go run main.go &
+          sleep 100
+          go test -run ^TestEditTask$ ./tests
+
+    - name: Run TestDone
+      run: |
+          CGO_ENABLED=0 GOOS=linux go run main.go &
+          sleep 100
+          go test -run ^TestDone$ ./tests
+
+    - name: Run TestDelTask
+      run: |
+          CGO_ENABLED=0 GOOS=linux go run main.go &
+          sleep 100
+          go test -run ^TestDelTask$ ./tests
+
+    - name: Run test
+      run: |
+          CGO_ENABLED=0 GOOS=linux go run main.go &
+          sleep 100
+          go test ./tests
